@@ -29,7 +29,7 @@ const galleryImages = [
 
 export function Gallery() {
   return (
-    <section id="gallery" className="bg-white py-16 lg:py-28">
+    <section id="gallery" className="relative bg-white py-16 lg:py-28 overflow-hidden">
       <div className="max-w-[1440px] mx-auto px-6 lg:px-12">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-12 lg:mb-16">
@@ -43,7 +43,7 @@ export function Gallery() {
           {galleryImages.map((image, index) => (
             <div
               key={index}
-              className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 aspect-square"
+              className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 aspect-square"
             >
               <ImageWithFallback
                 src={image.url}
@@ -64,6 +64,8 @@ export function Gallery() {
           </a>
         </div>
       </div>
+
+      <div className="absolute bottom-0 left-0 w-full h-12 bg-[#1E2A10] [clip-path:polygon(0_20%,100%_0,100%_100%,0_100%)]"></div>
     </section>
   );
 }

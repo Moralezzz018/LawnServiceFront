@@ -28,8 +28,16 @@ export function Navbar() {
             <a href="#contact" className="text-[#1E1E1E] hover:text-[#6B7C2E] transition-colors">
               Contact
             </a>
-            <button className="bg-[#6B7C2E] text-white px-6 py-2.5 rounded-lg hover:bg-[#3B4A10] transition-colors">
-              Get a Quote
+              <a href="#testimonials" className="text-[#1E1E1E] hover:text-[#6B7C2E] transition-colors">
+              Testimonials
+            </a>
+            <button
+              onClick={() => {
+                window.location.href = '/admin';
+              }}
+              className="bg-[#6B7C2E] text-white px-6 py-2.5 rounded-lg hover:bg-[#3B4A10] transition-colors"
+            >
+              Login
             </button>
           </div>
 
@@ -73,8 +81,21 @@ export function Navbar() {
             >
               Contact
             </a>
-            <button className="w-full bg-[#6B7C2E] text-white px-6 py-3 rounded-lg hover:bg-[#3B4A10] transition-colors">
-              Get a Quote
+              <a
+              href="#testimonials"
+              className="block py-2 text-[#1E1E1E] hover:text-[#6B7C2E] transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Testimonials
+            </a>
+            <button
+              onClick={() => {
+                setIsMenuOpen(false);
+                window.location.href = '/admin';
+              }}
+              className="w-full bg-[#6B7C2E] text-white px-6 py-3 rounded-lg hover:bg-[#3B4A10] transition-colors"
+            >
+              Login
             </button>
           </div>
         )}

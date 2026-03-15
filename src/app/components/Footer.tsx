@@ -2,8 +2,9 @@ import { Leaf, MapPin, Phone } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer id="contact" className="bg-[#1E2A10] text-white">
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-12 py-12 lg:py-20">
+    <footer id="contact" className="relative bg-[#1E2A10] text-white overflow-hidden">
+      <div className="noise-overlay absolute inset-0"></div>
+      <div className="relative max-w-[1440px] mx-auto px-6 lg:px-12 py-12 lg:py-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-16">
           {/* Logo & Tagline */}
           <div className="space-y-3 lg:space-y-4">
