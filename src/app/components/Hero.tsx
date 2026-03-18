@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { AppointmentModal } from './AppointmentModal';
+import { IMAGES } from '@/config/images';
 
 export function Hero() {
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
@@ -12,8 +13,8 @@ export function Hero() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1761013320045-d29e4f10bcbc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYW5pY3VyZWQlMjBsYXduJTIwc3VidXJiYW4lMjBob21lfGVufDF8fHx8MTc3MzUxMTY2N3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-            alt="Perfectly manicured lawn"
+            src={IMAGES.hero.src}
+            alt={IMAGES.hero.alt}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(122,161,66,0.45),transparent_45%),radial-gradient(circle_at_80%_18%,rgba(59,74,16,0.45),transparent_48%),radial-gradient(circle_at_50%_85%,rgba(30,42,16,0.55),transparent_52%),linear-gradient(125deg,rgba(0,0,0,0.55),rgba(0,0,0,0.28))]"></div>

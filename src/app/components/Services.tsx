@@ -4,32 +4,32 @@ const services = [
   {
     icon: Scissors,
     name: 'General Lawn Service',
-    description: 'Professional mowing and lawn maintenance',
+     description: 'Professional lawn mowing and maintenance for residential & commercial properties in Memphis, TN.',
   },
   {
     icon: TreeDeciduous,
     name: 'Bush & Trees Trimming',
-    description: 'Expert pruning and shaping services',
+     description: 'Expert bush and tree trimming to keep your landscaping neat and healthy year-round.',
   },
   {
     icon: Trash2,
     name: 'Plants Remove',
-    description: 'Safe and efficient plant removal',
+     description: 'Safe and efficient removal of unwanted plants and overgrowth from your yard.',
   },
   {
     icon: Leaf,
     name: 'Mulching',
-    description: 'Quality mulch installation for your beds',
+     description: 'Quality mulch installation for garden beds — retains moisture and boosts curb appeal.',
   },
   {
     icon: Flower2,
     name: 'Flowers',
-    description: 'Beautiful flower bed design and planting',
+     description: 'Beautiful flower bed design, seasonal planting and landscaping for Memphis homes.',
   },
   {
     icon: Sparkles,
     name: 'Leaves Cleaning & More',
-    description: 'Seasonal cleanup and maintenance',
+     description: 'Full seasonal yard cleanup including leaf removal, debris hauling and lawn prep.',
   },
 ];
 
@@ -40,10 +40,10 @@ export function Services() {
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-12 lg:mb-16">
           <h2 className="text-2xl lg:text-4xl font-bold text-[#1E1E1E] mb-3 lg:mb-4">
-            What We Do
+            Lawn Care Services in Memphis, TN
           </h2>
           <p className="text-base lg:text-lg text-[#1E1E1E]/70">
-            Professional lawn care tailored to your needs
+            Professional landscaping and yard maintenance serving Memphis, Germantown, Collierville, Bartlett & surrounding areas
           </p>
         </div>
 

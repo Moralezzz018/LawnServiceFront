@@ -1,35 +1,59 @@
+import { useEffect, useMemo, useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { IMAGES } from '@/config/images';
 
-const galleryImages = [
-  {
-    url: 'https://images.unsplash.com/photo-1734303023481-7508b5c9f1ff?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBsYXduJTIwbW93aW5nJTIwc2VydmljZXxlbnwxfHx8fDE3NzM0ODE0ODJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    alt: 'Professional lawn mowing',
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1759509474971-0f1f35a29efd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnYXJkZW4lMjBsYW5kc2NhcGluZyUyMHRyaW1tZWQlMjBidXNoZXN8ZW58MXx8fHwxNzczNTExNjY4fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    alt: 'Trimmed bushes and landscaping',
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1599776765440-3504b0d25653?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtdWxjaCUyMGdhcmRlbiUyMGJlZHN8ZW58MXx8fHwxNzczNTExNjY5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    alt: 'Mulch garden beds',
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1615046526364-ccfd92cd45bd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2xvcmZ1bCUyMGZsb3dlciUyMGdhcmRlbnxlbnwxfHx8fDE3NzM1MTE2Njl8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    alt: 'Colorful flower garden',
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1765064520254-229dbf995bcb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmVlJTIwdHJpbW1pbmclMjBsYW5kc2NhcGluZ3xlbnwxfHx8fDE3NzM1MTE2Njl8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    alt: 'Tree trimming service',
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1761013320045-d29e4f10bcbc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYW5pY3VyZWQlMjBsYXduJTIwc3VidXJiYW4lMjBob21lfGVufDF8fHx8MTc3MzUxMTY2N3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    alt: 'Manicured lawn',
-  },
-];
+type GalleryImage = {
+  id: number;
+  src: string;
+  alt: string;
+  position: number;
+};
 
 export function Gallery() {
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [showAll, setShowAll] = useState(false);
+
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+
+  useEffect(() => {
+    const loadGallery = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/gallery`);
+        if (!response.ok) {
+          throw new Error('No se pudo cargar la galería');
+        }
+
+        const payload = await response.json();
+        const rows: GalleryImage[] = Array.isArray(payload.data) ? payload.data : [];
+        setGalleryImages(rows);
+      } catch (error) {
+        setGalleryImages([]);
+      }
+    };
+
+    loadGallery();
+  }, [apiUrl]);
+
+  const resolvedImages = useMemo(() => {
+    if (galleryImages.length > 0) {
+      return galleryImages;
+    }
+
+    return IMAGES.gallery.map((image, index) => ({
+      id: index + 1,
+      src: image.src,
+      alt: image.alt,
+      position: index + 1,
+    }));
+  }, [galleryImages]);
+
+  const visibleImages = showAll ? resolvedImages : resolvedImages.slice(0, 9);
+  const hasMoreThanNine = resolvedImages.length > 9;
+
   return (
     <section id="gallery" className="relative bg-white py-16 lg:py-28 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(217,232,197,0.45),transparent_42%),radial-gradient(circle_at_85%_15%,rgba(217,232,197,0.35),transparent_38%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-30 bg-[repeating-linear-gradient(45deg,rgba(59,74,16,0.04)_0px,rgba(59,74,16,0.04)_1px,transparent_1px,transparent_12px)]" />
       <div className="max-w-[1440px] mx-auto px-6 lg:px-12">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-12 lg:mb-16">
@@ -40,13 +64,13 @@ export function Gallery() {
 
         {/* Masonry Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8">
-          {galleryImages.map((image, index) => (
+          {visibleImages.map((image, index) => (
             <div
-              key={index}
+              key={`${image.id}-${index}`}
               className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 aspect-square"
             >
               <ImageWithFallback
-                src={image.url}
+                src={image.src}
                 alt={image.alt}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
@@ -55,14 +79,17 @@ export function Gallery() {
         </div>
 
         {/* View More Link */}
-        <div className="text-center mt-8 lg:mt-12">
-          <a
-            href="#gallery"
-            className="inline-block text-[#6B7C2E] hover:text-[#3B4A10] transition-colors underline underline-offset-4 text-sm lg:text-base"
-          >
-            View More
-          </a>
-        </div>
+        {hasMoreThanNine && (
+          <div className="text-center mt-8 lg:mt-12">
+            <button
+              type="button"
+              onClick={() => setShowAll((prev) => !prev)}
+              className="inline-block text-[#6B7C2E] hover:text-[#3B4A10] transition-colors underline underline-offset-4 text-sm lg:text-base"
+            >
+              {showAll ? 'Ver menos' : `Ver más (${resolvedImages.length - 9})`}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="absolute bottom-0 left-0 w-full h-12 bg-[#1E2A10] [clip-path:polygon(0_20%,100%_0,100%_100%,0_100%)]"></div>

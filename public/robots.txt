@@ -1,0 +1,18 @@
+# robots.txt — Memphis Lawn Service
+# https://www.memphislawnservice.com
+
+User-agent: *
+Allow: /
+
+# No indexar el panel de administración
+Disallow: /admin
+Disallow: /admin/
+
+# No indexar archivos de sistema
+Disallow: /*.json$
+
+# Sitemap
+Sitemap: https://www.memphislawnservice.com/sitemap.xml
+
+# Crawl-delay (opcional, evita sobrecarga)
+Crawl-delay: 10

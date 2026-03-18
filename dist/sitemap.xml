@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  sitemap.xml — Memphis Lawn Service
+  ⚠️  Cambia "https://www.memphislawnservice.com" por tu dominio real.
+  Sube este archivo a Google Search Console en:
+  https://search.google.com/search-console → Sitemaps
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+          http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Página principal -->
+  <url>
+    <loc>https://www.memphislawnservice.com/</loc>
+    <lastmod>2026-03-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Ancla: Servicios -->
+  <url>
+    <loc>https://www.memphislawnservice.com/#services</loc>
+    <lastmod>2026-03-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Ancla: Galería -->
+  <url>
+    <loc>https://www.memphislawnservice.com/#gallery</loc>
+    <lastmod>2026-03-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Ancla: Testimonios -->
+  <url>
+    <loc>https://www.memphislawnservice.com/#testimonials</loc>
+    <lastmod>2026-03-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Ancla: Contacto -->
+  <url>
+    <loc>https://www.memphislawnservice.com/#contact</loc>
+    <lastmod>2026-03-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+</urlset>
