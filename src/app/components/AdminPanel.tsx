@@ -9,6 +9,7 @@ import {
   TreePine,
   Wind,
 } from 'lucide-react';
+import { getApiUrl } from '@/config/api';
 
 type AdminPanelProps = {
   token: string;
@@ -134,7 +135,7 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
   const [toast, setToast] = useState<ToastState>(null);
   const galleryFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+  const apiUrl = getApiUrl();
 
   const requestHeaders = useMemo(() => {
     const headers: Record<string, string> = {

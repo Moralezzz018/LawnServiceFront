@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Leaf, LockKeyhole } from 'lucide-react';
+import { getApiUrl } from '@/config/api';
 
 type AdminLoginProps = {
   onLoginSuccess: (token: string) => void;
@@ -11,7 +12,7 @@ export function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+  const apiUrl = getApiUrl();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

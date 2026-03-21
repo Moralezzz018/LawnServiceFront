@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { IMAGES } from '@/config/images';
+import { getApiUrl } from '@/config/api';
 
 type GalleryImage = {
   id: number;
@@ -13,7 +14,7 @@ export function Gallery() {
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [showAll, setShowAll] = useState(false);
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+  const apiUrl = getApiUrl();
 
   useEffect(() => {
     const loadGallery = async () => {

@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
+import { getApiUrl } from '@/config/api';
 
 type AppointmentModalProps = {
   isOpen: boolean;
@@ -41,7 +42,7 @@ export function AppointmentModal({ isOpen, onClose }: AppointmentModalProps) {
   const [successMessage, setSuccessMessage] = useState('');
 
   const apiUrl = useMemo(() => {
-    return import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+    return getApiUrl();
   }, []);
 
   if (!isOpen) return null;
