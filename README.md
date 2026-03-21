@@ -103,6 +103,19 @@ npm run build
 npm run preview
 ```
 
+## Variables de entorno
+- Usa `.env.example` para desarrollo local.
+- Usa `.env.production.example` para despliegue.
+- Variable requerida:
+   - `VITE_API_URL` -> URL pública del backend, incluyendo `/api`.
+   - Ejemplo: `https://api.tu-dominio.com/api`.
+
+## Checklist previa a deploy
+1. `VITE_API_URL` apunta al backend real.
+2. Backend tiene `CORS_ORIGIN` con el dominio del frontend.
+3. Ejecutar `npm run build` sin errores.
+4. Validar en preview: login admin, módulo galería y dashboard análisis.
+
 ---
 
 ## 6) ¿Cómo “funciona completo” este frontend?
