@@ -141,6 +141,7 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
   const [isLoadingGallery, setIsLoadingGallery] = useState(true);
   const [isUploadingGalleryImage, setIsUploadingGalleryImage] = useState(false);
   const [isSavingGalleryOrder, setIsSavingGalleryOrder] = useState(false);
+  const [galleryUploadFeedback, setGalleryUploadFeedback] = useState<ToastState>(null);
   const [analyticsAppointments, setAnalyticsAppointments] = useState<AppointmentAnalyticsItem[]>([]);
   const [analyticsQuotes, setAnalyticsQuotes] = useState<QuoteAnalyticsItem[]>([]);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
@@ -847,6 +848,7 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     }
 
     setIsUploadingGalleryImage(true);
+    setGalleryUploadFeedback(null);
 
     try {
       const formData = new FormData();
@@ -877,8 +879,17 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
       const rows: GalleryImageItem[] = Array.isArray(payload.data) ? payload.data : [];
       setGalleryImages(rows);
       setToast({ type: 'success', message: 'Imagen agregada a la galería.' });
+      setGalleryUploadFeedback({
+        type: 'success',
+        message: payload?.message || 'Imagen subida correctamente.',
+      });
     } catch (error) {
       setToast({ type: 'error', message: 'No se pudo subir la imagen.' });
+      const fallbackErrorMessage = error instanceof Error ? error.message : 'No se pudo subir la imagen.';
+      setGalleryUploadFeedback({
+        type: 'error',
+        message: fallbackErrorMessage,
+      });
     } finally {
       event.target.value = '';
       setIsUploadingGalleryImage(false);
@@ -1277,6 +1288,18 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
               </button>
             </div>
           </div>
+
+          {galleryUploadFeedback && (
+            <div
+              className={`mb-4 rounded-lg px-3 py-2 text-sm font-medium ${
+                galleryUploadFeedback.type === 'success'
+                  ? 'border border-green-200 bg-green-50 text-green-700'
+                  : 'border border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              {galleryUploadFeedback.message}
+            </div>
+          )}
 
           {isLoadingGallery ? (
             <p className="text-sm text-[#1E1E1E]/60">Cargando galería...</p>
