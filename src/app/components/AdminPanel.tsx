@@ -1,4 +1,4 @@
-import { ChangeEvent, ComponentType, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Flower2,
   Layers,
@@ -82,6 +82,18 @@ type QuoteAnalyticsItem = {
   createdAt: string;
 };
 
+type QuoteStatus = QuoteAnalyticsItem['status'];
+
+function normalizeQuoteAnalyticsItem(item: Partial<QuoteAnalyticsItem> & { id?: string }) {
+  return {
+    id: String(item.id || ''),
+    status: (item.status || 'DRAFT') as QuoteStatus,
+    serviceTypes: Array.isArray(item.serviceTypes) ? item.serviceTypes : [],
+    estimatedAmount: Number(item.estimatedAmount || 0),
+    createdAt: String(item.createdAt || new Date().toISOString()),
+  };
+}
+
 const iconMap: Record<string, ComponentType<{ className?: string }>> = {
   Scissors,
   TreePine,
@@ -132,6 +144,7 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
   const [analyticsAppointments, setAnalyticsAppointments] = useState<AppointmentAnalyticsItem[]>([]);
   const [analyticsQuotes, setAnalyticsQuotes] = useState<QuoteAnalyticsItem[]>([]);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+  const [isUpdatingQuoteStatus, setIsUpdatingQuoteStatus] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const galleryFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -174,52 +187,53 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     return quoteItems.reduce((sum, item) => sum + item.subtotal, 0);
   }, [quoteItems]);
 
-  useEffect(() => {
-    const loadServices = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`${apiUrl}/service-prices`, {
-          headers: requestHeaders,
-        });
+  const loadServices = useCallback(async () => {
+    setIsLoading(true);
 
-        if (response.status === 401) {
-          onLogout();
-          return;
-        }
+    try {
+      const response = await fetch(`${apiUrl}/service-prices`, {
+        headers: requestHeaders,
+      });
 
-        if (!response.ok) {
-          throw new Error('No se pudieron cargar los precios.');
-        }
-
-        const payload = await response.json();
-        const loaded = (payload.data || []) as ServicePrice[];
-        setServices(loaded);
-        setPriceInputs(
-          loaded.reduce<Record<number, string>>((acc, service) => {
-            acc[service.id] = String(Number(service.price ?? 0));
-            return acc;
-          }, {})
-        );
-        setSelectedServiceIds(loaded.filter((service) => service.isActive).map((service) => service.id));
-        setQuantities(
-          loaded.reduce<Record<number, string>>((acc, service) => {
-            acc[service.id] = '1';
-            return acc;
-          }, {})
-        );
-      } catch (error) {
-        setToast({ type: 'error', message: 'No se pudieron cargar los servicios.' });
-      } finally {
-        setIsLoading(false);
+      if (response.status === 401) {
+        onLogout();
+        return;
       }
-    };
 
-    loadServices();
+      if (!response.ok) {
+        throw new Error('No se pudieron cargar los precios.');
+      }
+
+      const payload = await response.json();
+      const loaded = (payload.data || []) as ServicePrice[];
+      setServices(loaded);
+      setPriceInputs(
+        loaded.reduce<Record<number, string>>((acc, service) => {
+          acc[service.id] = String(Number(service.price ?? 0));
+          return acc;
+        }, {})
+      );
+      setSelectedServiceIds(loaded.filter((service) => service.isActive).map((service) => service.id));
+      setQuantities(
+        loaded.reduce<Record<number, string>>((acc, service) => {
+          acc[service.id] = '1';
+          return acc;
+        }, {})
+      );
+    } catch (error) {
+      setToast({ type: 'error', message: 'No se pudieron cargar los servicios.' });
+    } finally {
+      setIsLoading(false);
+    }
   }, [apiUrl, onLogout, requestHeaders]);
 
-  useEffect(() => {
-    const loadGallery = async () => {
-      setIsLoadingGallery(true);
+  const loadGallery = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
+
+      if (!silent) {
+        setIsLoadingGallery(true);
+      }
 
       try {
         const response = await fetch(`${apiUrl}/gallery`, {
@@ -240,50 +254,98 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
 
         setGalleryImages(rows);
       } catch (error) {
-        setToast({ type: 'error', message: 'No se pudieron cargar las imágenes de galería.' });
+        if (!silent) {
+          setToast({ type: 'error', message: 'No se pudieron cargar las imágenes de galería.' });
+        }
       } finally {
-        setIsLoadingGallery(false);
+        if (!silent) {
+          setIsLoadingGallery(false);
+        }
       }
-    };
+    },
+    [apiUrl, onLogout, requestHeaders]
+  );
 
-    loadGallery();
+  const loadAnalytics = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+
+    if (!silent) {
+      setIsLoadingAnalytics(true);
+    }
+
+    try {
+      const [appointmentsResponse, quotesResponse] = await Promise.all([
+        fetch(`${apiUrl}/appointments`, { headers: requestHeaders }),
+        fetch(`${apiUrl}/quotes`, { headers: requestHeaders }),
+      ]);
+
+      if (appointmentsResponse.status === 401 || quotesResponse.status === 401) {
+        onLogout();
+        return;
+      }
+
+      if (!appointmentsResponse.ok || !quotesResponse.ok) {
+        throw new Error('No se pudieron cargar las métricas');
+      }
+
+      const appointmentsPayload = await appointmentsResponse.json();
+      const quotesPayload = await quotesResponse.json();
+
+      setAnalyticsAppointments(Array.isArray(appointmentsPayload.data) ? appointmentsPayload.data : []);
+      setAnalyticsQuotes(
+        Array.isArray(quotesPayload.data)
+          ? quotesPayload.data.map((quote: Partial<QuoteAnalyticsItem>) => normalizeQuoteAnalyticsItem(quote))
+          : []
+      );
+    } catch (error) {
+      if (!silent) {
+        setToast({ type: 'error', message: 'No se pudieron cargar las métricas de análisis.' });
+      }
+    } finally {
+      if (!silent) {
+        setIsLoadingAnalytics(false);
+      }
+    }
   }, [apiUrl, onLogout, requestHeaders]);
 
   useEffect(() => {
-    const loadAnalytics = async () => {
-      setIsLoadingAnalytics(true);
+    loadServices();
+  }, [loadServices]);
 
-      try {
-        const [appointmentsResponse, quotesResponse] = await Promise.all([
-          fetch(`${apiUrl}/appointments`, { headers: requestHeaders }),
-          fetch(`${apiUrl}/quotes`, { headers: requestHeaders }),
-        ]);
+  useEffect(() => {
+    loadGallery();
+  }, [loadGallery]);
 
-        if (appointmentsResponse.status === 401 || quotesResponse.status === 401) {
-          onLogout();
-          return;
-        }
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
 
-        if (!appointmentsResponse.ok || !quotesResponse.ok) {
-          throw new Error('No se pudieron cargar las métricas');
-        }
+  useEffect(() => {
+    if (activeModule !== 'analysis') return;
+    loadAnalytics();
+  }, [activeModule, loadAnalytics]);
 
-        const appointmentsPayload = await appointmentsResponse.json();
-        const quotesPayload = await quotesResponse.json();
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-        setAnalyticsAppointments(
-          Array.isArray(appointmentsPayload.data) ? appointmentsPayload.data : []
-        );
-        setAnalyticsQuotes(Array.isArray(quotesPayload.data) ? quotesPayload.data : []);
-      } catch (error) {
-        setToast({ type: 'error', message: 'No se pudieron cargar las métricas de análisis.' });
-      } finally {
-        setIsLoadingAnalytics(false);
+    if (activeModule === 'analysis') {
+      intervalId = setInterval(() => {
+        loadAnalytics({ silent: true });
+      }, 20000);
+    }
+
+    if (activeModule === 'gallery') {
+      intervalId = setInterval(() => {
+        loadGallery({ silent: true });
+      }, 20000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
-
-    loadAnalytics();
-  }, [apiUrl, onLogout, requestHeaders]);
+  }, [activeModule, loadAnalytics, loadGallery]);
 
   useEffect(() => {
     if (!toast) return;
@@ -584,6 +646,14 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
         throw new Error(payload?.message || 'No se pudo crear la cotización.');
       }
 
+      if (payload?.data?.id) {
+        const createdQuote = normalizeQuoteAnalyticsItem(payload.data);
+        setAnalyticsQuotes((prev) => {
+          const withoutExisting = prev.filter((item) => item.id !== createdQuote.id);
+          return [createdQuote, ...withoutExisting];
+        });
+      }
+
       handleGeneratePdf(payload?.data?.id);
       setToast({ type: 'success', message: 'Cotización creada correctamente.' });
       setQuoteForm({
@@ -812,6 +882,48 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     } finally {
       event.target.value = '';
       setIsUploadingGalleryImage(false);
+    }
+  };
+
+  const handleUpdateQuoteStatus = async (quoteId: string, status: QuoteStatus) => {
+    setIsUpdatingQuoteStatus(true);
+
+    try {
+      const response = await fetch(`${apiUrl}/quotes/${quoteId}/status`, {
+        method: 'PATCH',
+        headers: requestHeaders,
+        body: JSON.stringify({ status }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        onLogout();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(payload?.message || 'No se pudo actualizar el estado de la cotización.');
+      }
+
+      const updatedStatus = payload?.data?.status || status;
+
+      setAnalyticsQuotes((prev) =>
+        prev.map((quote) =>
+          quote.id === quoteId
+            ? {
+                ...quote,
+                status: updatedStatus,
+              }
+            : quote
+        )
+      );
+
+      setToast({ type: 'success', message: 'Estado de cotización actualizado.' });
+    } catch (error) {
+      setToast({ type: 'error', message: 'No se pudo actualizar el estado de la cotización.' });
+    } finally {
+      setIsUpdatingQuoteStatus(false);
     }
   };
 
@@ -1291,6 +1403,7 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
                               <th className="py-2 pr-3">Estado</th>
                               <th className="py-2 pr-3">Monto</th>
                               <th className="py-2">Fecha</th>
+                                <th className="py-2 pl-3">Acciones</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1300,6 +1413,34 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
                                 <td className="py-2 pr-3 text-[#1E1E1E]">{quote.status}</td>
                                 <td className="py-2 pr-3 text-[#1E1E1E]">{formatCurrency(quote.estimatedAmount)}</td>
                                 <td className="py-2 text-[#1E1E1E]/70">{formatDate(quote.createdAt)}</td>
+                                  <td className="py-2 pl-3">
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateQuoteStatus(quote.id, 'APPROVED')}
+                                        disabled={isUpdatingQuoteStatus || quote.status === 'APPROVED'}
+                                        className="rounded-md border border-[#D9E8C5] bg-[#F9FAF4] px-2 py-1 text-xs font-medium text-[#3B4A10] hover:bg-[#D9E8C5] disabled:cursor-not-allowed disabled:opacity-55"
+                                      >
+                                        Aprobar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateQuoteStatus(quote.id, 'SENT')}
+                                        disabled={isUpdatingQuoteStatus || quote.status === 'SENT'}
+                                        className="rounded-md border border-[#D1D5DB] bg-white px-2 py-1 text-xs font-medium text-[#1E1E1E] hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-55"
+                                      >
+                                        Enviar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateQuoteStatus(quote.id, 'REJECTED')}
+                                        disabled={isUpdatingQuoteStatus || quote.status === 'REJECTED'}
+                                        className="rounded-md border border-[#D1D5DB] bg-white px-2 py-1 text-xs font-medium text-[#1E1E1E] hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-55"
+                                      >
+                                        Rechazar
+                                      </button>
+                                    </div>
+                                  </td>
                               </tr>
                             ))}
                           </tbody>
