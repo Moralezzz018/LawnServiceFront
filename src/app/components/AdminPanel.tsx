@@ -7,9 +7,21 @@ import {
   Scissors,
   Shovel,
   TreePine,
+  Trash2,
   Wind,
 } from 'lucide-react';
 import { getApiUrl } from '@/config/api';
+
+// Categorías de galería (deben coincidir con el backend)
+const GALLERY_CATEGORIES = [
+  { key: 'general',  label: 'General'              },
+  { key: 'lawn',     label: 'Lawn Service'          },
+  { key: 'trimming', label: 'Tree & Bush Trimming'  },
+  { key: 'plants',   label: 'Plants Remove'         },
+  { key: 'mulching', label: 'Mulching'              },
+  { key: 'flowers',  label: 'Flowers'               },
+  { key: 'cleanup',  label: 'Leaves Cleanup & More' },
+] as const;
 
 type AdminPanelProps = {
   token: string;
@@ -63,6 +75,7 @@ type GalleryImageItem = {
   src: string;
   alt: string;
   position: number;
+  category: string;
 };
 
 type AdminModule = 'clients' | 'gallery' | 'analysis';
@@ -142,12 +155,13 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
   const [isUploadingGalleryImage, setIsUploadingGalleryImage] = useState(false);
   const [isSavingGalleryOrder, setIsSavingGalleryOrder] = useState(false);
   const [galleryUploadFeedback, setGalleryUploadFeedback] = useState<ToastState>(null);
+  const [galleryUploadCategory, setGalleryUploadCategory] = useState<string>('general');
+  const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
   const [analyticsAppointments, setAnalyticsAppointments] = useState<AppointmentAnalyticsItem[]>([]);
   const [analyticsQuotes, setAnalyticsQuotes] = useState<QuoteAnalyticsItem[]>([]);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isUpdatingQuoteStatus, setIsUpdatingQuoteStatus] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
-  const galleryFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const apiUrl = getApiUrl();
 
@@ -779,10 +793,6 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     popup.print();
   };
 
-  const handleOpenGalleryPicker = () => {
-    galleryFileInputRef.current?.click();
-  };
-
   const moveGalleryImage = (index: number, direction: 'up' | 'down') => {
     setGalleryImages((prev) => {
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -853,6 +863,7 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     try {
       const formData = new FormData();
       formData.append('image', file);
+      formData.append('category', galleryUploadCategory);
 
       const authHeaders: Record<string, string> = {};
       if (token) {
@@ -896,8 +907,34 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     }
   };
 
-  const handleUpdateQuoteStatus = async (quoteId: string, status: QuoteStatus) => {
-    setIsUpdatingQuoteStatus(true);
+  const handleDeleteGalleryImage = async (imageId: number) => {
+    setDeletingImageId(imageId);
+
+    try {
+      const authHeaders: Record<string, string> = {};
+      if (token) authHeaders.Authorization = `Bearer ${token}`;
+
+      const response = await fetch(`${apiUrl}/gallery/${imageId}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (response.status === 401) { onLogout(); return; }
+      if (!response.ok) throw new Error(payload?.message || 'No se pudo eliminar la imagen.');
+
+      const rows: GalleryImageItem[] = Array.isArray(payload.data) ? payload.data : [];
+      setGalleryImages(rows);
+      setToast({ type: 'success', message: 'Imagen eliminada.' });
+    } catch (error) {
+      setToast({ type: 'error', message: 'No se pudo eliminar la imagen.' });
+    } finally {
+      setDeletingImageId(null);
+    }
+  };
+
+  const handleUpdateQuoteStatus = async (quoteId: string, status: QuoteStatus) => {    setIsUpdatingQuoteStatus(true);
 
     try {
       const response = await fetch(`${apiUrl}/quotes/${quoteId}/status`, {
@@ -1254,99 +1291,149 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
 
         {activeModule === 'gallery' && (
           <section className="rounded-2xl border border-[#D9E8C5] bg-white p-5 shadow-sm lg:p-7">
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
+
+            {/* ── Encabezado ── */}
+            <div className="mb-5">
               <h2 className="text-xl font-bold text-[#1E1E1E]">Galería del sitio</h2>
-              <p className="text-sm text-[#1E1E1E]/65">
-                Agrega imágenes desde tu dispositivo y reordénalas para controlar cómo se muestran en la web.
+              <p className="mt-1 text-sm text-[#1E1E1E]/65">
+                Agrega fotos desde tu teléfono o dispositivo, selecciona la categoría del servicio y reordénalas.
               </p>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                ref={galleryFileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleUploadGalleryImage}
-              />
-              <button
-                type="button"
-                onClick={handleOpenGalleryPicker}
-                disabled={isUploadingGalleryImage}
-                className="rounded-lg bg-[#6B7C2E] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#3B4A10] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isUploadingGalleryImage ? 'Subiendo imagen...' : 'Agregar a galería'}
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveGalleryOrder}
-                disabled={isSavingGalleryOrder || isLoadingGallery || galleryImages.length === 0}
-                className="rounded-lg border border-[#D9E8C5] bg-white px-5 py-2.5 text-sm font-medium text-[#3B4A10] transition-colors hover:bg-[#D9E8C5] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSavingGalleryOrder ? 'Guardando orden...' : 'Guardar orden'}
-              </button>
-            </div>
-          </div>
+            {/* ── Panel de upload ── */}
+            <div className="mb-6 rounded-xl border border-[#D9E8C5] bg-[#F9FAF4] p-4">
+              <p className="mb-3 text-sm font-semibold text-[#3B4A10]">Subir nueva imagen</p>
 
-          {galleryUploadFeedback && (
-            <div
-              className={`mb-4 rounded-lg px-3 py-2 text-sm font-medium ${
-                galleryUploadFeedback.type === 'success'
-                  ? 'border border-green-200 bg-green-50 text-green-700'
-                  : 'border border-red-200 bg-red-50 text-red-700'
-              }`}
-            >
-              {galleryUploadFeedback.message}
-            </div>
-          )}
-
-          {isLoadingGallery ? (
-            <p className="text-sm text-[#1E1E1E]/60">Cargando galería...</p>
-          ) : galleryImages.length === 0 ? (
-            <p className="text-sm text-[#1E1E1E]/60">No hay imágenes en galería todavía.</p>
-          ) : (
-            <div className="space-y-3">
-              {galleryImages.map((image, index) => (
-                <div
-                  key={image.id}
-                  className="flex flex-col gap-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAF4] p-3 sm:flex-row sm:items-center sm:justify-between"
+              {/* Selector de categoría */}
+              <div className="mb-3">
+                <label className="mb-1.5 block text-xs font-medium text-[#1E1E1E]/70">
+                  Tipo de servicio (categoría)
+                </label>
+                <select
+                  value={galleryUploadCategory}
+                  onChange={(e) => setGalleryUploadCategory(e.target.value)}
+                  disabled={isUploadingGalleryImage}
+                  className="w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2.5 text-sm text-[#1E1E1E] outline-none focus:ring-2 focus:ring-[#6B7C2E] disabled:opacity-60"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <img
-                      src={image.src}
-                      alt={image.alt}
-                      className="h-16 w-16 rounded-lg object-cover"
-                      loading="lazy"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-[#1E1E1E]">{image.alt}</p>
-                      <p className="text-xs text-[#1E1E1E]/60">Posición: {index + 1}</p>
-                    </div>
-                  </div>
+                  {GALLERY_CATEGORIES.map((cat) => (
+                    <option key={cat.key} value={cat.key}>{cat.label}</option>
+                  ))}
+                </select>
+              </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => moveGalleryImage(index, 'up')}
-                      disabled={index === 0}
-                      className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#1E1E1E] transition-colors hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Subir
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveGalleryImage(index, 'down')}
-                      disabled={index === galleryImages.length - 1}
-                      className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#1E1E1E] transition-colors hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Bajar
-                    </button>
-                  </div>
+              {/* Botones upload — FIX MÓVIL: label en lugar de button + ref.click() */}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <label
+                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-colors ${
+                    isUploadingGalleryImage
+                      ? 'cursor-not-allowed bg-[#6B7C2E]/60'
+                      : 'bg-[#6B7C2E] hover:bg-[#3B4A10]'
+                  }`}
+                >
+                  {isUploadingGalleryImage ? 'Subiendo imagen...' : '📷 Agregar a galería'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    disabled={isUploadingGalleryImage}
+                    onChange={handleUploadGalleryImage}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleSaveGalleryOrder}
+                  disabled={isSavingGalleryOrder || isLoadingGallery || galleryImages.length === 0}
+                  className="rounded-lg border border-[#D9E8C5] bg-white px-5 py-2.5 text-sm font-medium text-[#3B4A10] transition-colors hover:bg-[#D9E8C5] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSavingGalleryOrder ? 'Guardando orden...' : 'Guardar orden'}
+                </button>
+              </div>
+
+              {/* Feedback de upload */}
+              {galleryUploadFeedback && (
+                <div
+                  className={`mt-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                    galleryUploadFeedback.type === 'success'
+                      ? 'border border-green-200 bg-green-50 text-green-700'
+                      : 'border border-red-200 bg-red-50 text-red-700'
+                  }`}
+                >
+                  {galleryUploadFeedback.message}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+
+            {/* ── Lista de imágenes ── */}
+            {isLoadingGallery ? (
+              <p className="text-sm text-[#1E1E1E]/60">Cargando galería...</p>
+            ) : galleryImages.length === 0 ? (
+              <p className="text-sm text-[#1E1E1E]/60">No hay imágenes en galería todavía.</p>
+            ) : (
+              <div className="space-y-3">
+                {galleryImages.map((image, index) => {
+                  const catLabel = GALLERY_CATEGORIES.find((c) => c.key === image.category)?.label ?? image.category;
+                  return (
+                    <div
+                      key={image.id}
+                      className="flex flex-col gap-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAF4] p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      {/* Miniatura + info */}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <img
+                          src={image.src}
+                          alt={image.alt}
+                          className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
+                          loading="lazy"
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-[#1E1E1E]">{image.alt}</p>
+                          <p className="text-xs text-[#1E1E1E]/60">Posición: {index + 1}</p>
+                          <span className="mt-0.5 inline-block rounded-full bg-[#D9E8C5] px-2 py-0.5 text-[10px] font-semibold text-[#3B4A10]">
+                            {catLabel}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Controles */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moveGalleryImage(index, 'up')}
+                          disabled={index === 0}
+                          className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#1E1E1E] transition-colors hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          ↑ Subir
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveGalleryImage(index, 'down')}
+                          disabled={index === galleryImages.length - 1}
+                          className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#1E1E1E] transition-colors hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          ↓ Bajar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`¿Eliminar esta imagen? Esta acción no se puede deshacer.`)) {
+                              handleDeleteGalleryImage(image.id);
+                            }
+                          }}
+                          disabled={deletingImageId === image.id}
+                          aria-label="Eliminar imagen"
+                          className="flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          {deletingImageId === image.id ? '...' : 'Eliminar'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
 
