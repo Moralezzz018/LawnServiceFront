@@ -1,7 +1,9 @@
 import { ChangeEvent, ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  Camera,
   Flower2,
+  Image as ImageIcon,
   Layers,
   Leaf,
   LogOut,
@@ -1386,16 +1388,18 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
                 </select>
               </div>
 
-              {/* Botones upload — FIX MÓVIL: label en lugar de button + ref.click() */}
-              <div className="flex flex-col gap-2 sm:flex-row">
+              {/* Botones de acción: Cámara directa y Galería del teléfono/laptop */}
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
+                {/* Opción 1: Cámara en vivo */}
                 <label
-                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-colors ${
+                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors ${
                     isUploadingGalleryImage
                       ? 'cursor-not-allowed bg-[#6B7C2E]/60'
                       : 'bg-[#6B7C2E] hover:bg-[#3B4A10]'
                   }`}
                 >
-                  {isUploadingGalleryImage ? 'Subiendo imagen...' : '📷 Agregar a galería'}
+                  <Camera className="h-4 w-4" />
+                  {isUploadingGalleryImage ? 'Subiendo...' : 'Tomar foto'}
                   <input
                     type="file"
                     accept="image/*"
@@ -1406,11 +1410,29 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
                   />
                 </label>
 
+                {/* Opción 2: Galería / Álbum de fotos */}
+                <label
+                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#6B7C2E] bg-white px-4 py-2.5 text-sm font-medium text-[#3B4A10] transition-colors hover:bg-[#D9E8C5] ${
+                    isUploadingGalleryImage ? 'cursor-not-allowed opacity-60' : ''
+                  }`}
+                >
+                  <ImageIcon className="h-4 w-4 text-[#6B7C2E]" />
+                  {isUploadingGalleryImage ? 'Subiendo...' : 'Elegir de galería'}
+                  <input
+                    type="file"
+                    accept="image/*,image/heic,image/heif,image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={isUploadingGalleryImage}
+                    onChange={handleUploadGalleryImage}
+                  />
+                </label>
+
+                {/* Opción 3: Guardar orden */}
                 <button
                   type="button"
                   onClick={handleSaveGalleryOrder}
                   disabled={isSavingGalleryOrder || isLoadingGallery || galleryImages.length === 0}
-                  className="rounded-lg border border-[#D9E8C5] bg-white px-5 py-2.5 text-sm font-medium text-[#3B4A10] transition-colors hover:bg-[#D9E8C5] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg border border-[#D9E8C5] bg-white px-4 py-2.5 text-sm font-medium text-[#3B4A10] transition-colors hover:bg-[#D9E8C5] disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto"
                 >
                   {isSavingGalleryOrder ? 'Guardando orden...' : 'Guardar orden'}
                 </button>
