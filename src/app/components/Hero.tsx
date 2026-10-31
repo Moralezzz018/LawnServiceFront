@@ -15,6 +15,7 @@ export function Hero() {
           <ImageWithFallback
             src={IMAGES.hero.src}
             alt={IMAGES.hero.alt}
+            loading="eager"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(122,161,66,0.45),transparent_45%),radial-gradient(circle_at_80%_18%,rgba(59,74,16,0.45),transparent_48%),radial-gradient(circle_at_50%_85%,rgba(30,42,16,0.55),transparent_52%),linear-gradient(125deg,rgba(0,0,0,0.55),rgba(0,0,0,0.28))]"></div>

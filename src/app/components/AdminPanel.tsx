@@ -1,5 +1,6 @@
 import { ChangeEvent, ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   Flower2,
   Layers,
   Leaf,
@@ -9,8 +10,65 @@ import {
   TreePine,
   Trash2,
   Wind,
+  X,
 } from 'lucide-react';
 import { getApiUrl } from '@/config/api';
+
+// Optimización automática de imágenes del lado del cliente
+async function compressImageBeforeUpload(file: File): Promise<File> {
+  if (!file.type.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
+    return file;
+  }
+  if (file.size <= 800 * 1024) {
+    return file; // Si pesa menos de 800KB no necesita compresión
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(file);
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob || blob.size >= file.size) {
+              resolve(file);
+            } else {
+              const safeName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+              resolve(new File([blob], safeName, { type: 'image/jpeg' }));
+            }
+          },
+          'image/jpeg',
+          0.82
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
 
 // Categorías de galería (deben coincidir con el backend)
 const GALLERY_CATEGORIES = [
@@ -157,6 +215,7 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
   const [galleryUploadFeedback, setGalleryUploadFeedback] = useState<ToastState>(null);
   const [galleryUploadCategory, setGalleryUploadCategory] = useState<string>('general');
   const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
+  const [imageToDelete, setImageToDelete] = useState<GalleryImageItem | null>(null);
   const [analyticsAppointments, setAnalyticsAppointments] = useState<AppointmentAnalyticsItem[]>([]);
   const [analyticsQuotes, setAnalyticsQuotes] = useState<QuoteAnalyticsItem[]>([]);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
@@ -851,9 +910,9 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
   };
 
   const handleUploadGalleryImage = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const rawFile = event.target.files?.[0];
 
-    if (!file) {
+    if (!rawFile) {
       return;
     }
 
@@ -861,6 +920,9 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     setGalleryUploadFeedback(null);
 
     try {
+      // Optimización automática antes de enviar por la red
+      const file = await compressImageBeforeUpload(rawFile);
+
       const formData = new FormData();
       formData.append('image', file);
       formData.append('category', galleryUploadCategory);
@@ -907,7 +969,9 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     }
   };
 
-  const handleDeleteGalleryImage = async (imageId: number) => {
+  const handleConfirmDelete = async () => {
+    if (!imageToDelete) return;
+    const imageId = imageToDelete.id;
     setDeletingImageId(imageId);
 
     try {
@@ -926,7 +990,8 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
 
       const rows: GalleryImageItem[] = Array.isArray(payload.data) ? payload.data : [];
       setGalleryImages(rows);
-      setToast({ type: 'success', message: 'Imagen eliminada.' });
+      setImageToDelete(null);
+      setToast({ type: 'success', message: 'Imagen eliminada correctamente.' });
     } catch (error) {
       setToast({ type: 'error', message: 'No se pudo eliminar la imagen.' });
     } finally {
@@ -1416,17 +1481,13 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`¿Eliminar esta imagen? Esta acción no se puede deshacer.`)) {
-                              handleDeleteGalleryImage(image.id);
-                            }
-                          }}
+                          onClick={() => setImageToDelete(image)}
                           disabled={deletingImageId === image.id}
                           aria-label="Eliminar imagen"
                           className="flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Trash2 className="h-3 w-3" />
-                          {deletingImageId === image.id ? '...' : 'Eliminar'}
+                          Eliminar
                         </button>
                       </div>
                     </div>
@@ -1564,6 +1625,81 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
           </section>
         )}
       </main>
+
+      {/* ── Modal de Confirmación Elegante para Eliminar Imagen ── */}
+      {imageToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all animate-in fade-in duration-200"
+          onClick={() => !deletingImageId && setImageToDelete(null)}
+        >
+          <div
+            className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Botón cerrar X */}
+            <button
+              type="button"
+              disabled={deletingImageId !== null}
+              onClick={() => setImageToDelete(null)}
+              className="absolute right-4 top-4 rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Cabecera con ícono de peligro */}
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <Trash2 className="h-5 w-5 stroke-[2]" />
+              </div>
+              <div className="pr-6">
+                <h3 className="text-lg font-bold text-[#1E1E1E]">Eliminar imagen</h3>
+                <p className="mt-1 text-xs sm:text-sm text-[#1E1E1E]/65 leading-relaxed">
+                  ¿Estás seguro de que deseas eliminar esta imagen de la galería? Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+
+            {/* Preview de la imagen */}
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAF4] p-3">
+              <img
+                src={imageToDelete.src}
+                alt={imageToDelete.alt}
+                className="h-14 w-14 rounded-lg object-cover flex-shrink-0 border border-gray-200"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-[#1E1E1E]">{imageToDelete.alt}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="inline-block rounded-full bg-[#D9E8C5] px-2 py-0.5 text-[10px] font-semibold text-[#3B4A10]">
+                    {GALLERY_CATEGORIES.find((c) => c.key === imageToDelete.category)?.label ?? imageToDelete.category}
+                  </span>
+                  <span className="text-[11px] text-[#1E1E1E]/50">Posición: {imageToDelete.position}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={deletingImageId !== null}
+                onClick={() => setImageToDelete(null)}
+                className="rounded-lg border border-[#D1D5DB] bg-white px-4 py-2.5 text-sm font-medium text-[#1E1E1E] transition-colors hover:bg-[#F3F4F6] disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deletingImageId !== null}
+                onClick={handleConfirmDelete}
+                className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" />
+                {deletingImageId !== null ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
