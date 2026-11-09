@@ -985,6 +985,35 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
     }
   };
 
+  const handleResetGalleryDefaults = async () => {
+    if (!window.confirm('¿Restaurar las imágenes predeterminadas de la galería? Esto eliminará imágenes huérfanas o rotas y restaurará las 7 imágenes originales.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/gallery/reset-defaults`, {
+        method: 'POST',
+        headers: requestHeaders,
+      });
+
+      if (response.status === 401) {
+        onLogout();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('No se pudo restaurar la galería.');
+      }
+
+      const payload = await response.json();
+      const rows: GalleryImageItem[] = Array.isArray(payload.data) ? payload.data : [];
+      setGalleryImages(rows);
+      setToast({ type: 'success', message: 'Galería restaurada con las 7 imágenes predeterminadas.' });
+    } catch {
+      setToast({ type: 'error', message: 'No se pudo restaurar la galería.' });
+    }
+  };
+
   const handleUploadGalleryImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const rawFile = event.target.files?.[0];
 
@@ -1520,6 +1549,17 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
                   className="rounded-lg border border-[#D9E8C5] bg-white px-4 py-2.5 text-sm font-medium text-[#3B4A10] transition-colors hover:bg-[#D9E8C5] disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto"
                 >
                   {isSavingGalleryOrder ? 'Guardando orden...' : 'Guardar orden'}
+                </button>
+
+                {/* Opción 4: Restaurar originales */}
+                <button
+                  type="button"
+                  onClick={handleResetGalleryDefaults}
+                  disabled={isLoadingGallery}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                  title="Elimina fotos con enlaces rotos y restaura las 7 fotos iniciales"
+                >
+                  Restaurar predeterminadas
                 </button>
               </div>
 

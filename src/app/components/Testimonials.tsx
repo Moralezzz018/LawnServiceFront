@@ -242,7 +242,7 @@ function TestimonialForm({
         <div className="mb-3 text-4xl">🌿</div>
         <h3 className="mb-2 text-lg font-semibold text-[#3B4A10]">Thank you for your review!</h3>
         <p className="mb-5 text-sm text-gray-600">
-          Your testimonial has been submitted and will appear shortly after review.
+          Your testimonial has been submitted and is now published!
         </p>
         <button
           type="button"
@@ -414,8 +414,9 @@ export function Testimonials() {
   }, [allTestimonials.length]);
 
   const handleFormSubmitted = useCallback(() => {
-    // Después de enviar, refrescamos la lista (pueden aparecer los aprobados)
+    // Después de enviar, refrescamos la lista y mostramos el nuevo testimonio
     fetchTestimonials();
+    setCurrentIndex(0);
   }, [fetchTestimonials]);
 
   const handleFormClose = useCallback(() => {
