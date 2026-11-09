@@ -138,7 +138,18 @@ type GalleryImageItem = {
   category: string;
 };
 
-type AdminModule = 'clients' | 'gallery' | 'analysis';
+type AdminModule = 'clients' | 'gallery' | 'analysis' | 'testimonials';
+
+type TestimonialAdminItem = {
+  id: number;
+  name: string;
+  location: string;
+  service: string;
+  text: string;
+  rating: number;
+  approved: boolean;
+  createdAt: string;
+};
 
 type AppointmentAnalyticsItem = {
   id: string;
@@ -223,6 +234,10 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isUpdatingQuoteStatus, setIsUpdatingQuoteStatus] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
+  const [adminTestimonials, setAdminTestimonials] = useState<TestimonialAdminItem[]>([]);
+  const [isLoadingTestimonials, setIsLoadingTestimonials] = useState(false);
+  const [approvingTestimonialId, setApprovingTestimonialId] = useState<number | null>(null);
+  const [deletingTestimonialId, setDeletingTestimonialId] = useState<number | null>(null);
 
   const apiUrl = getApiUrl();
 
@@ -383,6 +398,65 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
       }
     }
   }, [apiUrl, onLogout, requestHeaders]);
+
+  const loadTestimonials = useCallback(async () => {
+    setIsLoadingTestimonials(true);
+    try {
+      const res = await fetch(`${apiUrl}/testimonials/admin`, { headers: requestHeaders });
+      if (res.status === 401) { onLogout(); return; }
+      if (!res.ok) throw new Error('Error loading testimonials');
+      const data = await res.json();
+      setAdminTestimonials(Array.isArray(data.data) ? data.data : []);
+    } catch {
+      setToast({ type: 'error', message: 'No se pudieron cargar los testimonios.' });
+    } finally {
+      setIsLoadingTestimonials(false);
+    }
+  }, [apiUrl, onLogout, requestHeaders]);
+
+  useEffect(() => {
+    if (activeModule !== 'testimonials') return;
+    loadTestimonials();
+  }, [activeModule, loadTestimonials]);
+
+  const handleApproveTestimonial = async (id: number) => {
+    setApprovingTestimonialId(id);
+    try {
+      const res = await fetch(`${apiUrl}/testimonials/${id}/approve`, {
+        method: 'PATCH',
+        headers: requestHeaders,
+      });
+      if (res.status === 401) { onLogout(); return; }
+      if (!res.ok) throw new Error('Error approving testimonial');
+      setAdminTestimonials((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, approved: true } : t))
+      );
+      setToast({ type: 'success', message: 'Testimonio aprobado.' });
+    } catch {
+      setToast({ type: 'error', message: 'No se pudo aprobar el testimonio.' });
+    } finally {
+      setApprovingTestimonialId(null);
+    }
+  };
+
+  const handleDeleteTestimonial = async (id: number) => {
+    if (!window.confirm('¿Eliminar este testimonio? Esta acción no se puede deshacer.')) return;
+    setDeletingTestimonialId(id);
+    try {
+      const res = await fetch(`${apiUrl}/testimonials/${id}`, {
+        method: 'DELETE',
+        headers: requestHeaders,
+      });
+      if (res.status === 401) { onLogout(); return; }
+      if (!res.ok) throw new Error('Error deleting testimonial');
+      setAdminTestimonials((prev) => prev.filter((t) => t.id !== id));
+      setToast({ type: 'success', message: 'Testimonio eliminado.' });
+    } catch {
+      setToast({ type: 'error', message: 'No se pudo eliminar el testimonio.' });
+    } finally {
+      setDeletingTestimonialId(null);
+    }
+  };
 
   useEffect(() => {
     loadServices();
@@ -1077,7 +1151,7 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
 
       <main className="mx-auto max-w-[1440px] space-y-8 px-4 py-6 sm:px-6 lg:px-12 lg:py-10">
         <section className="rounded-2xl border border-[#D9E8C5] bg-white p-3 shadow-sm sm:p-4">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
             <button
               type="button"
               onClick={() => setActiveModule('clients')}
@@ -1110,6 +1184,17 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
               }`}
             >
               Módulo Análisis
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveModule('testimonials')}
+              className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
+                activeModule === 'testimonials'
+                  ? 'bg-[#6B7C2E] text-white'
+                  : 'border border-[#D9E8C5] bg-white text-[#3B4A10] hover:bg-[#D9E8C5]'
+              }`}
+            >
+              Testimonios
             </button>
           </div>
         </section>
@@ -1642,6 +1727,92 @@ export function AdminPanel({ token, onLogout }: AdminPanelProps) {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeModule === 'testimonials' && (
+          <section className="rounded-2xl border border-[#D9E8C5] bg-white p-5 shadow-sm lg:p-7">
+            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-[#1E1E1E]">Gestión de Testimonios</h2>
+                <p className="mt-1 text-sm text-[#1E1E1E]/65">
+                  Revisa, aprueba y modera los testimonios enviados por clientes.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={loadTestimonials}
+                disabled={isLoadingTestimonials}
+                className="rounded-lg border border-[#D9E8C5] px-4 py-2 text-sm font-medium text-[#3B4A10] transition-colors hover:bg-[#D9E8C5] disabled:opacity-50"
+              >
+                {isLoadingTestimonials ? 'Cargando...' : '↻ Actualizar'}
+              </button>
+            </div>
+
+            {isLoadingTestimonials ? (
+              <p className="text-sm text-[#1E1E1E]/60">Cargando testimonios...</p>
+            ) : adminTestimonials.length === 0 ? (
+              <p className="text-sm text-[#1E1E1E]/60">No hay testimonios registrados aún.</p>
+            ) : (
+              <div className="space-y-3">
+                {adminTestimonials.map((t) => (
+                  <div
+                    key={t.id}
+                    className={`rounded-xl border p-4 ${
+                      t.approved
+                        ? 'border-[#D9E8C5] bg-[#F9FAF4]'
+                        : 'border-yellow-200 bg-yellow-50'
+                    }`}
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-semibold text-sm text-[#1E1E1E]">{t.name}</span>
+                          <span className="text-xs text-gray-400">{t.location}</span>
+                          <span className="rounded-full bg-[#D9E8C5] px-2 py-0.5 text-[10px] font-medium text-[#3B4A10]">
+                            {t.service}
+                          </span>
+                          <span className="text-xs text-yellow-600">
+                            {'⭐'.repeat(t.rating)}
+                          </span>
+                          {t.approved ? (
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                              ✓ Aprobado
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold text-yellow-700">
+                              ⏳ Pendiente
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 italic line-clamp-3">"{t.text}"</p>
+                        <p className="mt-1 text-xs text-gray-400">{formatDate(t.createdAt)}</p>
+                      </div>
+                      <div className="flex shrink-0 gap-2 mt-1">
+                        {!t.approved && (
+                          <button
+                            type="button"
+                            disabled={approvingTestimonialId === t.id}
+                            onClick={() => handleApproveTestimonial(t.id)}
+                            className="rounded-lg bg-[#6B7C2E] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#3B4A10] disabled:opacity-50"
+                          >
+                            {approvingTestimonialId === t.id ? 'Aprobando...' : 'Aprobar'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={deletingTestimonialId === t.id}
+                          onClick={() => handleDeleteTestimonial(t.id)}
+                          className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 disabled:opacity-50"
+                        >
+                          {deletingTestimonialId === t.id ? 'Eliminando...' : 'Eliminar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </section>
